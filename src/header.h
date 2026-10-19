@@ -1,0 +1,10 @@
+#pragma once
+
+#define MAXPTS 10000001 
+#define PAGESIZE 4096
+#define MAX_CHILDREN 64 
+
+#define PI 3.1415926535897932384626433832795f
+
+#define MAXDIMEN 16
+
