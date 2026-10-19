@@ -1,78 +1,159 @@
-# ARF optimization artifact
+# Designing Products that Rise in the Rankings
 
-This source-only artifact provides exact and certified-gap anytime ARF
-optimization. Both modes use the same executable.
-It includes full rank-offset accounting. Benchmark orchestration, results,
-historical variants and experimental datasets are not included.
+Anonymous source artifact for Aggregate Rank Minimization (ARM).
 
-## Build requirements
+## Paper overview
 
-Linux x86-64, GNU Make, a C++17 compiler and OpenMP are required, together with:
+The paper studies how to design a new product that ranks favorably across users
+with different preferences. Products have numerical attributes, and each user
+scores a product using a non-negative linear preference vector. A product's rank
+for a user is the number of existing products with a strictly higher score.
+The aggregate rank function (ARF) sums those ranks across users.
 
-- IBM ILOG CPLEX Optimization Studio 22.1.1 (CPLEX and Concert development files).
+ARM seeks a feasible product minimizing ARF, subject to linear constraints on
+its attributes. The implementation uses geometric preprocessing, upper-boundary
+trimming, slab filtering, LP lower bounds and tightening, branch-and-bound, and
+reduced MILP subproblems. The same executable supports exact search and anytime
+search with a certified relative-gap stopping target.
+
+This repository contains the algorithm source, build instructions, and small
+synthetic example inputs. It does not contain benchmark runners, ablation
+variants, experimental results, proprietary libraries, or the paper's large
+experimental datasets. The examples demonstrate the input format and commands;
+they are not a reproduction of the paper's experimental evaluation.
+
+## Requirements
+
+Use Linux x86-64 with GNU Make, a C++17 compiler, OpenMP, and these development
+dependencies:
+
+- IBM ILOG CPLEX Optimization Studio 22.1.1, including CPLEX and Concert.
   Obtain and install it separately under an appropriate IBM license.
-- Google OR-Tools C++ 9.11, Protobuf and compatible Abseil libraries.
-- Reentrant Qhull development library (`libqhull_r`).
-- GMP C++ development library (`libgmpxx`).
-- lp_solve 5.5.2.0 library, matching the bundled third-party headers.
+- Google OR-Tools C++ 9.11, Protobuf, and compatible Abseil libraries.
+- Reentrant Qhull (`libqhull_r`).
+- GMP C++ (`libgmpxx`).
+- lp_solve 5.5.2.0, matching the bundled third-party headers.
 
-Dependency binaries, proprietary installers and license keys are not supplied.
-Set library search paths for your installation when necessary.
+Dependency binaries, proprietary installers, and license keys are not included.
+
+## Build
+
+Run from the repository root. Replace the dependency placeholders with your own
+installation locations:
 
 ```bash
-make -j2 CPLEX_DIR=/path/to/CPLEX_Studio2211 PREFIX=/usr/local
+make -j2 CPLEX_DIR=/path/to/CPLEX_Studio2211 PREFIX=/path/to/dependency-prefix
 ```
 
-If lp_solve is not installed in the linker search path:
+`PREFIX` defaults to `/usr/local`. If lp_solve is not in the linker search path,
+provide its library explicitly:
 
 ```bash
 make -j2 CPLEX_DIR=/path/to/CPLEX_Studio2211 \
+  PREFIX=/path/to/dependency-prefix \
   LP_SOLVE_LIB=/path/to/liblpsolve55.a
 ```
 
-The executable is `bin/arf`. `make clean` removes local build outputs only.
-Optimization flags are configurable with `CXXFLAGS`; timings depend on the
-compiler flags, dependencies and hardware used.
+The resulting executable is `bin/arf`. Configure your dynamic-library search
+path if your shared dependencies are outside the system search paths:
 
-## Run the synthetic example
+```bash
+export LD_LIBRARY_PATH=/path/to/dependency-prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+```
 
-From the repository root, exact mode:
+`make clean` removes only the local `build/` and `bin/` output directories.
+Compiler options can be overridden with `CXXFLAGS`.
+
+## Run the IND example
+
+The example has 64 synthetic products with four pseudo-random uniform attributes
+in the unit interval and five illustrative user preference vectors. Point
+products are represented by equal lower and upper coordinates. The generated
+feasible region uses radius 1, four constraint hyperplanes, and WCA seed 31.
+There is no application timeout in these commands.
+
+The sample coordinates are written with enough decimal digits to round-trip the
+32-bit values used internally. Both example commands return `ARF: 71`; elapsed
+time depends on the machine.
+
+### Exact mode
 
 ```bash
 OMP_NUM_THREADS=1 ANYTIME_DISABLE=1 ./bin/arf \
-  -d 2 -pf examples/products.dat -uf examples/users.dat \
+  -d 4 \
+  -pf examples/ind_products.dat \
+  -uf examples/ind_users.dat \
   -wca generated -wr 1.0 -wn 4 -ws 31
 ```
 
-Anytime mode with a 0.5% certified relative-gap target:
+### Anytime mode: 2% certified gap
 
 ```bash
 env -u ANYTIME_DISABLE -u ANYTIME_STOP_GAP_PERCENT OMP_NUM_THREADS=1 \
-  ./bin/arf -d 2 -pf examples/products.dat -uf examples/users.dat \
-  -wca generated -wr 1.0 -wn 4 -ws 31 -agap 0.005
+  ./bin/arf -d 4 \
+  -pf examples/ind_products.dat \
+  -uf examples/ind_users.dat \
+  -wca generated -wr 1.0 -wn 4 -ws 31 -agap 0.02
 ```
 
-Use `-agap 0.01` for 1% and `-agap 0.02` for 2%. In this interface,
-`-agap 1` means 100%, not 1%. Clear inherited anytime environment variables.
-The relative gap is `(incumbent - certified_lower_bound) / certified_lower_bound`
-when the certified lower bound is positive. This is a certificate against a
-bound, not a measurement against an independently known optimum.
+Use `-agap 0.005` for 0.5%, `-agap 0.01` for 1%, or `-agap 0.04` for 4%.
+For values at most 1, `-agap` is a fraction: `-agap 1` means 100%, not 1%.
+Clear inherited `ANYTIME_DISABLE` and `ANYTIME_STOP_GAP_PERCENT` settings when
+running anytime mode. `ANYTIME_DISABLE=1` takes precedence over a gap target.
 
-The program prints `ARF:` and `TIME_SEC:`. Set `ANYTIME_INTERVAL_SEC=5` for
-additional snapshots at solver checkpoints; this is not a hard real-time timer.
+The relative-gap certificate is
+`(incumbent - certified_lower_bound) / certified_lower_bound` when the certified
+lower bound is positive. It is a guarantee based on a lower bound, not a
+comparison against an independently known optimum. A requested gap is an upper
+limit on the certificate; the returned solution can be better than that limit.
 
-## Input format
+## Output
 
-Whitespace-separated text with no header:
+The program prints the selected slab combination, a feasible-point candidate,
+`ARF:`, and `TIME_SEC:`. `TIME_SEC` is elapsed solver time in seconds. Anytime
+mode also prints incumbent and lower-bound information at search checkpoints.
+For periodic checkpoint snapshots, set `ANYTIME_INTERVAL_SEC=5`; this setting
+does not impose a hard real-time timer or a runtime cutoff.
 
-- Products: integer ID, then `d` lower coordinates, then `d` upper coordinates.
-- Users: integer ID followed by `d` preference coordinates.
+The example is a smoke test, not a general correctness proof. Independently
+reevaluate a returned point against the original inputs when using it as a
+solution certificate.
 
-Dimensions must match `-d`. The bundled example is synthetic demonstration
-data, not an experimental dataset. `-ws` selects the generated WCA seed;
-the user seed is determined when creating the user input file.
+## Run other inputs
 
+Use the same commands with your own product and user files and set `-d` to their
+dimension. Both formats are whitespace-separated text with no header.
+
+Products contain an integer ID, then `d` lower coordinates, then `d` upper
+coordinates. Non-point products are scored using their bounding-box centers.
+A four-dimensional point product can be written as:
+
+```text
+1 0.2 0.4 0.6 0.8 0.2 0.4 0.6 0.8
+```
+
+Users contain an integer ID followed by `d` non-negative preference weights
+summing to 1:
+
+```text
+1 0.25 0.25 0.25 0.25
+```
+
+Input precision matters near score ties: product coordinates are stored as
+32-bit floating-point values, and user weights are truncated downward to four
+decimal places on loading. Independent rank checks must apply the same input
+conversion; using the original decimal values can change a near-tie comparison.
+For non-point products, the lower-plus-upper coordinate addition used to compute
+each center is also performed in 32-bit floating-point arithmetic.
+The supplied IND inputs avoid additional conversion differences.
+
+All product attributes in these examples are normalized to the unit interval,
+with higher values representing more desirable attributes. The option `-ws`
+selects the generated WCA seed, not a user seed; the user preferences come from
+the supplied user file. The original two-dimensional smoke-test inputs remain
+available as `examples/products.dat` and `examples/users.dat`, using `-d 2`.
 
 ## Third-party notices
 
-See `THIRD_PARTY_NOTICES.md`. Preserve the notices in the bundled headers.
+See `THIRD_PARTY_NOTICES.md`. Preserve the original notices and license text in
+the bundled third-party headers. External dependencies retain their own licenses.
