@@ -1,5 +1,9 @@
 /build/
 /bin/
+competitors/*/build/
+competitors/*/bin/
+core
+core.*
 *.o
 *.d
 *.a

@@ -16,8 +16,9 @@ trimming, slab filtering, LP lower bounds and tightening, branch-and-bound, and
 reduced MILP subproblems. The same executable supports exact search and anytime
 search with a certified relative-gap stopping target.
 
-This repository contains the algorithm source, build instructions, and small
-synthetic example inputs. It does not contain benchmark runners, ablation
+This repository contains ARM (Exact and anytime), the EAC and MILP competitor
+implementations, build instructions, and small synthetic example inputs.
+It does not contain benchmark runners, ablation
 variants, experimental results, proprietary libraries, or the paper's large
 experimental datasets. The examples demonstrate the input format and commands;
 they are not a reproduction of the paper's experimental evaluation.
@@ -152,6 +153,56 @@ with higher values representing more desirable attributes. The option `-ws`
 selects the generated WCA seed, not a user seed; the user preferences come from
 the supplied user file. The original two-dimensional smoke-test inputs remain
 available as `examples/products.dat` and `examples/users.dat`, using `-d 2`.
+
+## Competitors: EAC and MILP
+
+The two competitors are separate executables; they do not change the ARM build
+or its anytime mode. EAC enumerates slab combinations and checks feasibility
+with lp_solve. MILP solves a whole-problem mixed-integer model with CPLEX.
+Both use Qhull for feasible-region vertices and the same input-file formats.
+They are exact baselines, not anytime implementations.
+
+Build from the repository root:
+
+```bash
+make -C competitors/eac -j2 PREFIX=/path/to/dependency-prefix \
+  LP_SOLVE_LIB=/path/to/liblpsolve55.a
+make -C competitors/milp -j2 PREFIX=/path/to/dependency-prefix \
+  CPLEX_DIR=/path/to/CPLEX_Studio2211
+```
+
+EAC needs lp_solve and Qhull. MILP needs CPLEX/Concert and Qhull; it does not
+link lp_solve. Neither competitor needs OR-Tools or GMP. The same shared-library
+search-path setup described above applies when dependencies are not on the
+system search path. No compiled libraries or proprietary dependencies are bundled.
+
+Run the original small 2D example:
+
+```bash
+./competitors/eac/bin/eac -d 2 \
+  -pf examples/products.dat -uf examples/users.dat -N 4 -wr 1.0 -ws 31
+./competitors/milp/bin/milp -d 2 \
+  -pf examples/products.dat -uf examples/users.dat -N 4 -wr 1.0 -ws 31
+```
+
+Both commands return `ARF: 2`. For the shared 4D IND example, use `-d 4`,
+`-pf examples/ind_products.dat`, and `-uf examples/ind_users.dat`, keeping
+`-N 4 -wr 1.0 -ws 31`; both return `ARF: 71`. EAC's enumeration can be much
+slower than ARM or MILP, even on this small example.
+
+For competitors, `-N` selects the number of generated constraint hyperplanes
+(ARM uses `-wn`). `-wr` is the radius and `-ws` is the WCA seed.
+Keep these parameters identical when comparing methods. Both print the selected
+slabs, a solution point, `ARF:`, and total elapsed `TIME_SEC:` including input
+loading and preprocessing. Neither command has an application timeout.
+
+The packaged versions retain constant rank contributions from products pruned
+above all feasible scores. Their reported ARF therefore includes those products,
+not just the remaining slab indices. This reporting correction does not change
+the minimizing slab search. They also reject missing or malformed inputs, print
+solution coordinates at full double precision, and build without generated
+benchmark or plotting files. The MILP solver requires an optimal status and sets
+its relative and absolute MIP gap targets to zero (subject to solver tolerances).
 
 ## Third-party notices
 
