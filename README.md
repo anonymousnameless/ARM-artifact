@@ -16,7 +16,7 @@ trimming, slab filtering, LP lower bounds and tightening, branch-and-bound, and
 reduced MILP subproblems. The same executable supports exact search and anytime
 search with a certified relative-gap stopping target.
 
-This repository contains ARM (Exact and anytime), the EAC and MILP competitor
+This repository contains ARM (Exact and anytime), the PROG and MILP competitor
 implementations, build instructions, and small synthetic example inputs.
 It does not contain benchmark runners, ablation
 variants, experimental results, proprietary libraries, or the paper's large
@@ -154,10 +154,10 @@ selects the generated WCA seed, not a user seed; the user preferences come from
 the supplied user file. The original two-dimensional smoke-test inputs remain
 available as `examples/products.dat` and `examples/users.dat`, using `-d 2`.
 
-## Competitors: EAC and MILP
+## Competitors: PROG and MILP
 
 The two competitors are separate executables; they do not change the ARM build
-or its anytime mode. EAC enumerates slab combinations and checks feasibility
+or its anytime mode. PROG enumerates slab combinations and checks feasibility
 with lp_solve. MILP solves a whole-problem mixed-integer model with CPLEX.
 Both use Qhull for feasible-region vertices and the same input-file formats.
 They are exact baselines, not anytime implementations.
@@ -165,13 +165,13 @@ They are exact baselines, not anytime implementations.
 Build from the repository root:
 
 ```bash
-make -C competitors/eac -j2 PREFIX=/path/to/dependency-prefix \
+make -C competitors/prog -j2 PREFIX=/path/to/dependency-prefix \
   LP_SOLVE_LIB=/path/to/liblpsolve55.a
 make -C competitors/milp -j2 PREFIX=/path/to/dependency-prefix \
   CPLEX_DIR=/path/to/CPLEX_Studio2211
 ```
 
-EAC needs lp_solve and Qhull. MILP needs CPLEX/Concert and Qhull; it does not
+PROG needs lp_solve and Qhull. MILP needs CPLEX/Concert and Qhull; it does not
 link lp_solve. Neither competitor needs OR-Tools or GMP. The same shared-library
 search-path setup described above applies when dependencies are not on the
 system search path. No compiled libraries or proprietary dependencies are bundled.
@@ -179,7 +179,7 @@ system search path. No compiled libraries or proprietary dependencies are bundle
 Run the original small 2D example:
 
 ```bash
-./competitors/eac/bin/eac -d 2 \
+./competitors/prog/bin/prog -d 2 \
   -pf examples/products.dat -uf examples/users.dat -N 4 -wr 1.0 -ws 31
 ./competitors/milp/bin/milp -d 2 \
   -pf examples/products.dat -uf examples/users.dat -N 4 -wr 1.0 -ws 31
@@ -187,7 +187,7 @@ Run the original small 2D example:
 
 Both commands return `ARF: 2`. For the shared 4D IND example, use `-d 4`,
 `-pf examples/ind_products.dat`, and `-uf examples/ind_users.dat`, keeping
-`-N 4 -wr 1.0 -ws 31`; both return `ARF: 71`. EAC's enumeration can be much
+`-N 4 -wr 1.0 -ws 31`; both return `ARF: 71`. PROG's enumeration can be much
 slower than ARM or MILP, even on this small example.
 
 For competitors, `-N` selects the number of generated constraint hyperplanes

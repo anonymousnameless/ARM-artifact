@@ -1,4 +1,4 @@
-# EAC competitor
+# PROG competitor
 
 See the root README for dependencies, build commands, example runs, and input
 precision. This directory contains source and a Makefile only.

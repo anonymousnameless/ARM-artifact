@@ -1,6 +1,6 @@
 # Third-party components
 
-The files `src/geometry/lp_*.h` and `competitors/eac/src/headers/lp_*.h`
+The files `src/geometry/lp_*.h` and `competitors/prog/src/headers/lp_*.h`
 are third-party lp_solve headers. Their original
 copyright, author and license notices are retained. lp_solve is distributed
 under the GNU Lesser General Public License; consult the upstream distribution
@@ -13,7 +13,7 @@ project's original code is implied by this notice.
 
 ## Competitor code provenance
 
-The EAC and MILP implementations contain code derived from UTK. The inherited
+The PROG and MILP implementations contain code derived from UTK. The inherited
 notice states that copying and redistribution require permission from the
 original authors. That restriction is retained here; this artifact does not
 grant an unrestricted license to the UTK-derived code. Redistribution permission

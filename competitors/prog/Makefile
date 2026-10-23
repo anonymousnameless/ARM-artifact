@@ -11,8 +11,8 @@ SOURCES = $(wildcard src/*.cpp)
 OBJECTS = $(patsubst src/%.cpp,build/%.o,$(SOURCES))
 
 .PHONY: all clean
-all: bin/eac
-bin/eac: $(OBJECTS)
+all: bin/prog
+bin/prog: $(OBJECTS)
 	mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -o $@ $(OBJECTS) $(LDLIBS)
 build/%.o: src/%.cpp
